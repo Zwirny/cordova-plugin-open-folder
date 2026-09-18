@@ -1,208 +1,88 @@
 # cordova-plugin-open-folder
-Opens folders on android devices
-# cordova-plugin-open-folder
 
-A small Cordova plugin for Android that opens the Android system folder picker using `ACTION_OPEN_DOCUMENT_TREE`.
+Cordova-Plugin (nur Android), das einen übergebenen Ordnerpfad **direkt** in der
+auf dem Gerät installierten Datei-Explorer-App öffnet – **ohne** Auswahldialog.
 
-This plugin is useful when a Cordova application needs to let the user select a directory instead of opening a regular file.
+Gedacht z.B. für den SAP Neptune Mobile Client auf Zebra-Scannern, um dem Nutzer
+per Knopfdruck den Inhalt eines bestimmten Ordners (z. B. `cordova.file.externalDataDirectory`)
+im normalen Dateimanager anzuzeigen.
 
 ## Installation
-
-Install the plugin directly from GitHub:
 
 ```bash
 cordova plugin add https://github.com/Zwirny/cordova-plugin-open-folder.git
 ```
 
-Or install it from a local directory:
+oder lokal:
 
 ```bash
 cordova plugin add ./cordova-plugin-open-folder
 ```
 
-## Requirements
+Das Plugin benötigt `cordova-android >= 8.0.0` und bindet automatisch einen
+`FileProvider` ins `AndroidManifest.xml` ein (kein zusätzliches Setup nötig).
 
-* Cordova
-* Android
-* Android 5.0 (API 21) or newer
+## Verwendung
 
-No additional Android permissions are required.
+```js
+var pfad = cordova.file.externalDataDirectory; // z.B. mit cordova-plugin-file
 
-## Usage
-
-After installing the plugin, the API is available through:
-
-```javascript
-cordova.plugins.openFolder
-```
-
-### Open the folder picker
-
-```javascript
 cordova.plugins.openFolder.open(
-    null,
+    pfad,
     function (uri) {
-        console.log("Folder selected:", uri);
+        console.log('Ordner geöffnet:', uri);
     },
     function (error) {
-        console.error("Could not open folder:", error);
+        console.error('Ordner konnte nicht geöffnet werden:', error);
     }
 );
 ```
 
-The success callback receives the URI of the selected directory.
+### API: `open(path, success, error)`
 
-Example:
+| Parameter | Typ        | Beschreibung                                                        |
+| --------- | ---------- | -------------------------------------------------------------------- |
+| `path`    | `String`   | Absoluter Dateisystempfad **oder** `file://`-URL (z. B. aus `cordova-plugin-file`) |
+| `success` | `Function` | Wird aufgerufen, sobald eine App zum Anzeigen des Ordners gestartet wurde |
+| `error`   | `Function` | Wird aufgerufen, wenn der Pfad ungültig ist oder keine App gefunden wurde |
 
-```text
-content://com.android.externalstorage.documents/tree/primary%3ADocuments
-```
+Der `success`-Callback erhält die `content://`-URI des Ordners.
 
-### Using a folder path
+## Funktionsweise / Fallback-Strategie
 
-You can also pass a path to the plugin:
+Android bietet keine garantierte API, um "irgendeinen Ordner im Dateimanager öffnen"
+zu erzwingen. Das Plugin probiert deshalb nacheinander:
 
-```javascript
-const folder = cordova.file.externalDataDirectory;
+1. **`ACTION_VIEW` mit MIME-Type `resource/folder`** auf einer `FileProvider`-URI –
+   wird von vielen Datei-Manager-Apps unterstützt (u. a. Google Files, viele
+   OEM-/Zebra-Dateimanager).
+2. **Android's eingebautes "Files"/DocumentsUI** über eine `DocumentsContract`-URI –
+   funktioniert für Pfade auf dem primären (internen/externen) Speicher, z. B.
+   `cordova.file.externalDataDirectory`.
+3. **Generischer `ACTION_VIEW` mit `*/*`** als letzter Fallback, damit Android
+   selbst eine passende App vorschlägt.
 
-cordova.plugins.openFolder.open(
-    folder,
-    function (uri) {
-        console.log("Folder selected:", uri);
-    },
-    function (error) {
-        console.error("Could not open folder:", error);
-    }
-);
-```
+Schlägt alles fehl (z. B. weil auf dem Gerät gar keine Datei-Manager-App
+installiert ist), wird der `error`-Callback aufgerufen.
 
-For example, with `cordova-plugin-file`:
+## Unterstützte Android-Versionen
 
-```javascript
-const folder = cordova.file.externalDataDirectory;
+- Minimum: Android 7.1.2 (API 25)
+- Verwendet `androidx.core.content.FileProvider`, daher keine
+  `FileUriExposedException` auf Android 7+.
 
-cordova.plugins.openFolder.open(
-    folder,
-    function (uri) {
-        console.log("Selected:", uri);
-    },
-    function (error) {
-        console.error("Error:", error);
-    }
-);
-```
+## Berechtigungen
 
-## API
+Keine zusätzlichen Runtime-Permissions nötig, solange der übergebene Pfad
+innerhalb einer der im `FileProvider` konfigurierten Verzeichnisse liegt
+(App-eigene Verzeichnisse, interner/externer Cache, externer Speicher).
+Diese Konfiguration liegt in `src/android/res/xml/file_paths.xml` und kann bei
+Bedarf erweitert werden.
 
-### `open(path, success, error)`
-
-Opens the Android directory picker.
-
-| Parameter | Type             | Description                                     |
-| --------- | ---------------- | ----------------------------------------------- |
-| `path`    | `String \| null` | Optional path used as the initial folder        |
-| `success` | `Function`       | Called after the user selects a folder          |
-| `error`   | `Function`       | Called when the operation fails or is cancelled |
-
-### Success callback
-
-```javascript
-function (uri) {
-    console.log("Selected folder:", uri);
-}
-```
-
-The returned value is an Android `content://` URI.
-
-### Error callback
-
-```javascript
-function (error) {
-    console.error("Error:", error);
-}
-```
-
-The callback is also invoked when the user cancels the folder selection.
-
-## Example
-
-A complete example using `cordova-plugin-file`:
-
-```javascript
-function selectFolder() {
-
-    const path = cordova.file.externalDataDirectory;
-
-    cordova.plugins.openFolder.open(
-        path,
-        function (uri) {
-            console.log("Folder selected successfully:");
-            console.log(uri);
-        },
-        function (error) {
-            console.error("Folder selection failed:");
-            console.error(error);
-        }
-    );
-}
-```
-
-## Android Storage Access Framework
-
-On Android 5.0 and newer, the plugin uses Android's Storage Access Framework:
-
-```text
-Intent.ACTION_OPEN_DOCUMENT_TREE
-```
-
-The user selects a directory through the Android system UI.
-
-The returned `content://` URI can be used with Android APIs that support Storage Access Framework URIs.
-
-## Important
-
-This plugin opens the **Android folder selection UI**.
-
-It does **not** open an arbitrary directory in a third-party file manager application.
-
-In particular, Android does not guarantee that a given physical filesystem path can be opened directly in the user's preferred file manager.
-
-The returned URI is a Storage Access Framework URI and may look like:
-
-```text
-content://com.android.externalstorage.documents/tree/primary%3ADocuments
-```
-
-## Permissions
-
-The plugin does not require additional permissions in `AndroidManifest.xml`.
-
-Access to the selected directory is granted by Android through the Storage Access Framework.
-
-## Cancellation
-
-If the user presses the Back button or otherwise cancels the folder selection, the error callback is called:
-
-```javascript
-cordova.plugins.openFolder.open(
-    null,
-    function (uri) {
-        console.log("Selected:", uri);
-    },
-    function (error) {
-        console.log("Selection cancelled or failed:", error);
-    }
-);
-```
-
-## License
+## Lizenz
 
 MIT
 
-## Author
+## Autor
 
 Zwirny
-
-## Repository
-
-https://github.com/Zwirny/cordova-plugin-open-folder

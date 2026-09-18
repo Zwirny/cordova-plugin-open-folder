@@ -1,300 +1,163 @@
-/*
- * Copyright (c) 2026 Zwirny
- *
- * MIT License
- */
+package cordova.plugin.openfolder;
 
-package com.zwirny.openfolder;
-
-import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
+import android.provider.DocumentsContract;
+
+import androidx.core.content.FileProvider;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import java.io.File;
+
 /**
- * Cordova plugin for opening the Android folder picker.
+ * Cordova plugin (Android only) that opens a given folder path directly in the
+ * device's native file manager app - no folder-picker dialog is shown.
  *
- * Android's Storage Access Framework is used through:
- *
- *     Intent.ACTION_OPEN_DOCUMENT_TREE
- *
- * The result is a content:// URI representing the selected folder.
+ * Strategy (in order, first one that finds an app to handle it wins):
+ *  1. ACTION_VIEW on a FileProvider content:// URI with mime type "resource/folder"
+ *     (understood by Google Files and many OEM file managers, e.g. on Zebra devices).
+ *  2. ACTION_VIEW on Android's built-in DocumentsUI ("Files") document URI,
+ *     for paths located on primary external/shared storage.
+ *  3. ACTION_VIEW with a generic "*&#47;*" mime type as a last resort, letting
+ *     Android offer any app that can handle the content URI.
  */
 public class OpenFolder extends CordovaPlugin {
 
-    /**
-     * Request code used to identify our folder picker.
-     */
-    private static final int REQUEST_OPEN_FOLDER = 1001;
+    private static final String ACTION_OPEN = "open";
+    private static final String PROVIDER_SUFFIX = ".cordova.plugin.openfolder.provider";
 
-    /**
-     * JavaScript callback waiting for the picker result.
-     */
-    private CallbackContext callbackContext;
-
-
-    /**
-     * Entry point called by Cordova JavaScript.
-     */
     @Override
-    public boolean execute(
-            String action,
-            JSONArray args,
-            CallbackContext callbackContext
-    ) throws JSONException {
-
-        /*
-         * We currently expose only one action:
-         *
-         *     open
-         */
-        if ("open".equals(action)) {
-
-            /*
-             * Store the callback because the Android activity
-             * returns asynchronously.
-             */
-            this.callbackContext = callbackContext;
-
-            openFolder(args);
-
-            return true;
+    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+        if (!ACTION_OPEN.equals(action)) {
+            return false;
         }
 
-        /*
-         * Unknown action.
-         */
+        final String path = args.isNull(0) ? null : args.getString(0);
+
+        cordova.getThreadPool().execute(new Runnable() {
+            @Override
+            public void run() {
+                openFolder(path, callbackContext);
+            }
+        });
+
+        return true;
+    }
+
+    private void openFolder(String rawPath, CallbackContext callbackContext) {
+        if (rawPath == null || rawPath.trim().isEmpty()) {
+            callbackContext.error("No path provided");
+            return;
+        }
+
+        String cleanPath = toFileSystemPath(rawPath);
+        File folder = new File(cleanPath);
+
+        if (!folder.exists()) {
+            callbackContext.error("Path does not exist: " + cleanPath);
+            return;
+        }
+        if (!folder.isDirectory()) {
+            callbackContext.error("Path is not a directory: " + cleanPath);
+            return;
+        }
+
+        Uri contentUri;
+        try {
+            String authority = cordova.getActivity().getPackageName() + PROVIDER_SUFFIX;
+            contentUri = FileProvider.getUriForFile(cordova.getActivity(), authority, folder);
+        } catch (IllegalArgumentException e) {
+            callbackContext.error("Folder is outside the paths configured for FileProvider: " + e.getMessage());
+            return;
+        }
+
+        if (tryOpen(contentUri, "resource/folder")) {
+            callbackContext.success(contentUri.toString());
+            return;
+        }
+
+        if (tryOpenDocumentsUi(cleanPath)) {
+            callbackContext.success(contentUri.toString());
+            return;
+        }
+
+        if (tryOpen(contentUri, "*/*")) {
+            callbackContext.success(contentUri.toString());
+            return;
+        }
+
+        callbackContext.error("No file manager app found on this device that can open a folder");
+    }
+
+    /** Accepts either a plain filesystem path or a file:// URL (as returned by cordova-plugin-file). */
+    private String toFileSystemPath(String path) {
+        if (path.startsWith("file://")) {
+            String decoded = Uri.parse(path).getPath();
+            return decoded != null ? decoded : path;
+        }
+        return path;
+    }
+
+    private boolean tryOpen(Uri uri, String mimeType) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, mimeType);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            if (intent.resolveActivity(cordova.getActivity().getPackageManager()) != null) {
+                cordova.getActivity().startActivity(intent);
+                return true;
+            }
+        } catch (ActivityNotFoundException | SecurityException e) {
+            // try next strategy
+        }
         return false;
     }
 
-
     /**
-     * Opens the Android system folder picker.
+     * Opens Android's built-in Documents UI ("Files") directly at the folder location.
+     * Only works for paths located on primary external/shared storage
+     * (e.g. /storage/emulated/0/...), which covers cordova.file.externalDataDirectory.
      */
-    private void openFolder(JSONArray args) {
-
-        /*
-         * Android UI operations must run on the UI thread.
-         */
-        cordova.getActivity().runOnUiThread(() -> {
-
-            try {
-
-                /*
-                 * ACTION_OPEN_DOCUMENT_TREE is available from
-                 * Android 5.0 / API 21.
-                 */
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-
-                    callbackContext.error(
-                            "Android 5.0 (API 21) or newer is required."
-                    );
-
-                    callbackContext = null;
-
-                    return;
-                }
-
-
-                /*
-                 * Create the native Android folder picker.
-                 */
-                Intent intent = new Intent(
-                        Intent.ACTION_OPEN_DOCUMENT_TREE
-                );
-
-
-                /*
-                 * Request read/write access to the selected
-                 * directory.
-                 *
-                 * Persistable permission allows the application
-                 * to keep using the selected URI later.
-                 */
-                intent.addFlags(
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                        | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                        | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
-                );
-
-
-                /*
-                 * Android 8.0 / API 26 introduced EXTRA_INITIAL_URI.
-                 *
-                 * Only a content:// URI can safely be passed here.
-                 *
-                 * A file:// URI, such as the URI returned by
-                 * cordova-plugin-file, cannot simply be converted
-                 * into a SAF URI.
-                 */
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-
-                    String path = null;
-
-                    if (args != null
-                            && args.length() > 0
-                            && !args.isNull(0)) {
-
-                        path = args.getString(0);
-                    }
-
-
-                    if (path != null
-                            && path.startsWith("content://")) {
-
-                        Uri initialUri = Uri.parse(path);
-
-                        intent.putExtra(
-                                "android.provider.extra.INITIAL_URI",
-                                initialUri
-                        );
-                    }
-                }
-
-
-                /*
-                 * Start the Android activity.
-                 *
-                 * Cordova will call onActivityResult() when
-                 * the picker is closed.
-                 */
-                cordova.startActivityForResult(
-                        this,
-                        intent,
-                        REQUEST_OPEN_FOLDER
-                );
-
-            } catch (Exception e) {
-
-                /*
-                 * Something went wrong while starting the picker.
-                 */
-                if (callbackContext != null) {
-
-                    callbackContext.error(
-                            e.getMessage() != null
-                                    ? e.getMessage()
-                                    : "Could not open folder picker."
-                    );
-
-                    callbackContext = null;
-                }
-            }
-        });
-    }
-
-
-    /**
-     * Receives the result from Android's folder picker.
-     */
-    @Override
-    public void onActivityResult(
-            int requestCode,
-            int resultCode,
-            Intent intent
-    ) {
-
-        super.onActivityResult(
-                requestCode,
-                resultCode,
-                intent
-        );
-
-
-        /*
-         * Ignore results belonging to other activities.
-         */
-        if (requestCode != REQUEST_OPEN_FOLDER) {
-            return;
+    private boolean tryOpenDocumentsUi(String absolutePath) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            return false;
         }
 
-
-        /*
-         * No JavaScript callback is waiting.
-         */
-        if (callbackContext == null) {
-            return;
+        String primaryRoot;
+        try {
+            primaryRoot = Environment.getExternalStorageDirectory().getCanonicalPath();
+        } catch (Exception e) {
+            primaryRoot = Environment.getExternalStorageDirectory().getAbsolutePath();
         }
 
-
-        /*
-         * User selected a folder.
-         */
-        if (resultCode == Activity.RESULT_OK
-                && intent != null) {
-
-            Uri uri = intent.getData();
-
-
-            if (uri != null) {
-
-                /*
-                 * Ask Android to keep the granted permission.
-                 *
-                 * Some document providers may not support this.
-                 * In that case the selected URI is still returned.
-                 */
-                try {
-
-                    final int takeFlags =
-                            intent.getFlags()
-                                    & (
-                                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                        | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                                    );
-
-                    cordova.getActivity()
-                            .getContentResolver()
-                            .takePersistableUriPermission(
-                                    uri,
-                                    takeFlags
-                            );
-
-                } catch (Exception ignored) {
-
-                    /*
-                     * The document provider does not support
-                     * persistable permissions.
-                     *
-                     * This is not fatal.
-                     */
-                }
-
-
-                /*
-                 * Return the selected content:// URI to JavaScript.
-                 */
-                callbackContext.success(
-                        uri.toString()
-                );
-
-            } else {
-
-                callbackContext.error(
-                        "No folder URI was returned by Android."
-                );
-            }
-
-        } else {
-
-            /*
-             * User pressed Back or otherwise cancelled the picker.
-             */
-            callbackContext.error(
-                    "Folder selection cancelled."
-            );
+        String canonicalPath = absolutePath;
+        try {
+            canonicalPath = new File(absolutePath).getCanonicalPath();
+        } catch (Exception e) {
+            // keep absolutePath as-is
         }
 
+        if (!canonicalPath.startsWith(primaryRoot)) {
+            return false;
+        }
 
-        /*
-         * The callback has now been handled.
-         */
-        callbackContext = null;
+        String relative = canonicalPath.substring(primaryRoot.length());
+        if (relative.startsWith(File.separator)) {
+            relative = relative.substring(1);
+        }
+
+        String docId = "primary:" + relative;
+        Uri docUri = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", docId);
+
+        return tryOpen(docUri, "vnd.android.document/directory");
     }
 }

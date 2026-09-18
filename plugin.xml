@@ -1,31 +1,45 @@
-<?xml version="1.0" encoding="utf-8"?>
-
-<plugin
-    id="cordova-plugin-open-folder"
-    version="1.0.0"
-    xmlns="http://apache.org/cordova/ns/plugins/1.0">
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        id="cordova-plugin-open-folder"
+        version="2.0.0">
 
     <name>OpenFolder</name>
-
-    <description>
-        Cordova plugin for opening the Android system folder picker.
-    </description>
-
+    <description>Opens a given folder path directly in the device's native file manager app (Android).</description>
     <license>MIT</license>
+    <author>Zwirny</author>
+    <keywords>cordova,android,folder,file explorer,zebra,sap neptune</keywords>
+    <repo>https://github.com/Zwirny/cordova-plugin-open-folder.git</repo>
+    <issue>https://github.com/Zwirny/cordova-plugin-open-folder/issues</issue>
 
-    <js-module
-        src="www/openfolder.js"
-        name="openFolder">
-
+    <js-module src="www/openFolder.js" name="OpenFolder">
         <clobbers target="cordova.plugins.openFolder" />
-
     </js-module>
 
     <platform name="android">
 
-        <source-file
-            src="src/android/OpenFolder.java"
-            target-dir="src/com/zwirny/openfolder" />
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="OpenFolder">
+                <param name="android-package" value="cordova.plugin.openfolder.OpenFolder" />
+            </feature>
+        </config-file>
+
+        <config-file target="AndroidManifest.xml" parent="/manifest/application">
+            <provider
+                android:name="androidx.core.content.FileProvider"
+                android:authorities="${applicationId}.cordova.plugin.openfolder.provider"
+                android:exported="false"
+                android:grantUriPermissions="true">
+                <meta-data
+                    android:name="android.support.FILE_PROVIDER_PATHS"
+                    android:resource="@xml/openfolder_file_paths" />
+            </provider>
+        </config-file>
+
+        <source-file src="src/android/OpenFolder.java" target-dir="src/cordova/plugin/openfolder" />
+        <resource-file src="src/android/res/xml/file_paths.xml" target="res/xml/openfolder_file_paths.xml" />
+
+        <framework src="androidx.core:core:1.9.0" />
 
     </platform>
 

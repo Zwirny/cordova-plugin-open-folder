@@ -1,32 +1,40 @@
 {
   "name": "cordova-plugin-open-folder",
-  "version": "1.0.0",
-  "description": "Cordova plugin for opening the Android system folder picker.",
+  "version": "2.0.0",
+  "description": "Cordova/Android plugin to open a given folder path directly in the device's native file manager app (no picker dialog).",
   "cordova": {
     "id": "cordova-plugin-open-folder",
     "platforms": [
       "android"
     ]
   },
+  "keywords": [
+    "cordova",
+    "ecosystem:cordova",
+    "cordova-android",
+    "android",
+    "file explorer",
+    "file manager",
+    "zebra",
+    "sap neptune"
+  ],
+  "author": "Zwirny",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/Zwirny/cordova-plugin-open-folder.git"
   },
-  "keywords": [
-    "cordova",
-    "cordova-plugin",
-    "android",
-    "folder",
-    "directory",
-    "picker",
-    "storage",
-    "saf",
-    "storage-access-framework"
-  ],
-  "author": "Zwirny",
-  "license": "MIT",
   "bugs": {
     "url": "https://github.com/Zwirny/cordova-plugin-open-folder/issues"
   },
-  "homepage": "https://github.com/Zwirny/cordova-plugin-open-folder"
+  "engines": [
+    {
+      "name": "cordova",
+      "version": ">=9.0.0"
+    },
+    {
+      "name": "cordova-android",
+      "version": ">=8.0.0"
+    }
+  ]
 }

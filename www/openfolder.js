@@ -1,32 +1,19 @@
-/*
- * Copyright (c) 2026 Zwirny
- *
- * MIT License
- */
+var exec = require('cordova/exec');
 
-var exec = require("cordova/exec");
+var PLUGIN_NAME = 'OpenFolder';
 
-/**
- * Opens the Android system folder picker.
- *
- * @param {String|null} path
- *      Optional initial content:// URI.
- *
- * @param {Function} success
- *      Called when a folder was selected.
- *
- * @param {Function} error
- *      Called when the picker was cancelled or failed.
- */
-exports.open = function (path, success, error) {
-
-    exec(
-        success,
-        error,
-        "OpenFolder",
-        "open",
-        [
-            path || null
-        ]
-    );
+var OpenFolder = {
+    /**
+     * Opens the given folder path directly in the device's native file manager app.
+     *
+     * @param {string} path            Absolute filesystem path or file:// URL,
+     *                                  e.g. cordova.file.externalDataDirectory
+     * @param {function} successCallback  Called with the content:// URI of the folder once an app was launched.
+     * @param {function} errorCallback    Called with an error message if no app could open the folder.
+     */
+    open: function (path, successCallback, errorCallback) {
+        exec(successCallback, errorCallback, PLUGIN_NAME, 'open', [path]);
+    }
 };
+
+module.exports = OpenFolder;
