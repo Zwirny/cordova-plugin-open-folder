@@ -15,7 +15,7 @@
 
     <js-module
         src="www/openfolder.js"
-        name="OpenFolder">
+        name="openFolder">
 
         <clobbers target="cordova.plugins.openFolder" />
 
