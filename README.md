@@ -1,11 +1,14 @@
 # cordova-plugin-open-folder
 
-Cordova-Plugin (nur Android), das einen übergebenen Ordnerpfad **direkt** in der
-auf dem Gerät installierten Datei-Explorer-App öffnet – **ohne** Auswahldialog.
+## AI Usage
 
-Gedacht z.B. für den SAP Neptune Mobile Client auf Zebra-Scannern, um dem Nutzer
-per Knopfdruck den Inhalt eines bestimmten Ordners (z. B. `cordova.file.externalDataDirectory`)
-im normalen Dateimanager anzuzeigen.
+This project was created fully by AI. I have not read any of the code, not even this readme.
+
+## Overview
+
+A Cordova plugin (Android only) that opens a specified folder path **directly** in the file explorer app installed on the device – **without** displaying a folder selection dialog.
+
+It is intended, for example, for the SAP Neptune Mobile Client on Zebra scanners, allowing users to open the contents of a specific folder (such as `cordova.file.externalDataDirectory`) in the regular file manager with a single button press.
 
 ## Installation
 
@@ -13,76 +16,75 @@ im normalen Dateimanager anzuzeigen.
 cordova plugin add https://github.com/Zwirny/cordova-plugin-open-folder.git
 ```
 
-oder lokal:
+Or locally:
 
 ```bash
 cordova plugin add ./cordova-plugin-open-folder
 ```
 
-Das Plugin benötigt `cordova-android >= 8.0.0` und bindet automatisch einen
-`FileProvider` ins `AndroidManifest.xml` ein (kein zusätzliches Setup nötig).
+The plugin requires `cordova-android >= 8.0.0` and automatically registers a `FileProvider` in the `AndroidManifest.xml` (no additional setup required).
 
-## Verwendung
+## Usage
 
 ```js
-var pfad = cordova.file.externalDataDirectory; // z.B. mit cordova-plugin-file
+var path = cordova.file.externalDataDirectory; // e.g. using cordova-plugin-file
 
 cordova.plugins.openFolder.open(
-    pfad,
+    path,
     function (uri) {
-        console.log('Ordner geöffnet:', uri);
+        console.log('Folder opened:', uri);
     },
     function (error) {
-        console.error('Ordner konnte nicht geöffnet werden:', error);
+        console.error('Could not open folder:', error);
     }
 );
 ```
 
 ### API: `open(path, success, error)`
 
-| Parameter | Typ        | Beschreibung                                                        |
-| --------- | ---------- | -------------------------------------------------------------------- |
-| `path`    | `String`   | Absoluter Dateisystempfad **oder** `file://`-URL (z. B. aus `cordova-plugin-file`) |
-| `success` | `Function` | Wird aufgerufen, sobald eine App zum Anzeigen des Ordners gestartet wurde |
-| `error`   | `Function` | Wird aufgerufen, wenn der Pfad ungültig ist oder keine App gefunden wurde |
+| Parameter | Type       | Description                                                                     |
+| --------- | ---------- | ------------------------------------------------------------------------------- |
+| `path`    | `String`   | Absolute filesystem path **or** `file://` URL (e.g. from `cordova-plugin-file`) |
+| `success` | `Function` | Called once an app capable of displaying the folder has been launched           |
+| `error`   | `Function` | Called if the path is invalid or no suitable app can be found                   |
 
-Der `success`-Callback erhält die `content://`-URI des Ordners.
+The `success` callback receives the `content://` URI of the folder.
 
-## Funktionsweise / Fallback-Strategie
+## How It Works / Fallback Strategy
 
-Android bietet keine garantierte API, um "irgendeinen Ordner im Dateimanager öffnen"
-zu erzwingen. Das Plugin probiert deshalb nacheinander:
+Android does not provide a guaranteed API for forcing "any folder" to open in a file manager. Therefore, the plugin tries the following approaches in sequence:
 
-1. **`ACTION_VIEW` mit MIME-Type `resource/folder`** auf einer `FileProvider`-URI –
-   wird von vielen Datei-Manager-Apps unterstützt (u. a. Google Files, viele
-   OEM-/Zebra-Dateimanager).
-2. **Android's eingebautes "Files"/DocumentsUI** über eine `DocumentsContract`-URI –
-   funktioniert für Pfade auf dem primären (internen/externen) Speicher, z. B.
-   `cordova.file.externalDataDirectory`.
-3. **Generischer `ACTION_VIEW` mit `*/*`** als letzter Fallback, damit Android
-   selbst eine passende App vorschlägt.
+1. **`ACTION_VIEW` with the MIME type `resource/folder`** using a `FileProvider` URI.
+   This is supported by many file manager apps, including Google Files and many OEM/Zebra file managers.
 
-Schlägt alles fehl (z. B. weil auf dem Gerät gar keine Datei-Manager-App
-installiert ist), wird der `error`-Callback aufgerufen.
+2. **Android's built-in "Files"/DocumentsUI** using a `DocumentsContract` URI.
+   This works for paths located on the primary internal/external storage, such as `cordova.file.externalDataDirectory`.
 
-## Unterstützte Android-Versionen
+3. **Generic `ACTION_VIEW` with `*/*`** as a final fallback, allowing Android itself to suggest a suitable application.
 
-- Minimum: Android 7.1.2 (API 25)
-- Verwendet `androidx.core.content.FileProvider`, daher keine
-  `FileUriExposedException` auf Android 7+.
+If all approaches fail (for example, if no file manager app is installed on the device), the `error` callback is invoked.
 
-## Berechtigungen
+## Supported Android Versions
 
-Keine zusätzlichen Runtime-Permissions nötig, solange der übergebene Pfad
-innerhalb einer der im `FileProvider` konfigurierten Verzeichnisse liegt
-(App-eigene Verzeichnisse, interner/externer Cache, externer Speicher).
-Diese Konfiguration liegt in `src/android/res/xml/file_paths.xml` und kann bei
-Bedarf erweitert werden.
+* Minimum: Android 7.1.2 (API 25)
+* Uses `androidx.core.content.FileProvider`, preventing `FileUriExposedException` on Android 7+.
 
-## Lizenz
+## Permissions
+
+No additional runtime permissions are required as long as the provided path is located within one of the directories configured in the `FileProvider`.
+
+The current configuration is located in:
+
+```text
+src/android/res/xml/file_paths.xml
+```
+
+It can be extended if additional directories need to be supported.
+
+## License
 
 MIT
 
-## Autor
+## Author
 
-Zwirny
+Claude
