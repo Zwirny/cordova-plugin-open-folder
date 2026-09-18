@@ -1,0 +1,32 @@
+{
+  "name": "cordova-plugin-open-folder",
+  "version": "1.0.0",
+  "description": "Cordova plugin for opening the Android system folder picker.",
+  "cordova": {
+    "id": "cordova-plugin-open-folder",
+    "platforms": [
+      "android"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zwirny/cordova-plugin-open-folder.git"
+  },
+  "keywords": [
+    "cordova",
+    "cordova-plugin",
+    "android",
+    "folder",
+    "directory",
+    "picker",
+    "storage",
+    "saf",
+    "storage-access-framework"
+  ],
+  "author": "Zwirny",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Zwirny/cordova-plugin-open-folder/issues"
+  },
+  "homepage": "https://github.com/Zwirny/cordova-plugin-open-folder"
+}
