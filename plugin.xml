@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<plugin id="cordova-plugin-open-folder"
+        version="1.0.0"
+        xmlns="http://apache.org/cordova/ns/plugins/1.0">
+
+    <name>OpenFolder</name>
+    <description>Open Android folder picker</description>
+
+    <js-module src="www/openfolder.js" name="OpenFolder">
+        <clobbers target="cordova.plugins.openFolder" />
+    </js-module>
+
+    <platform name="android">
+        <source-file src="src/android/OpenFolder.java"
+                     target-dir="src/com/example/openfolder" />
+    </platform>
+
+</plugin>
