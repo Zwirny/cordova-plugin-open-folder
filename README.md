@@ -1,4 +1,6 @@
 # cordova-plugin-open-folder
+[![npm - Latest](https://img.shields.io/npm/v/cordova-plugin-open-folder/latest?label=Latest%20Release%20(npm)&color=red)](https://npmjs.com/package/cordova-plugin-open-folder)
+[![GitHub](https://img.shields.io/github/package-json/v/Zwirny/cordova-plugin-open-folder?label=Development%20(Git)&color=blue)](https://github.com/Zwirny/cordova-plugin-open-folder)
 
 ## AI Usage
 
