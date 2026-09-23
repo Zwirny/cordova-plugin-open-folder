@@ -95,12 +95,12 @@ public class OpenFolder extends CordovaPlugin {
         }
 
         try {
-            if (tryOpen(contentUri, "resource/folder")) {
+            if (tryOpenDocumentsUi(cleanPath)) {
                 callbackContext.success(contentUri.toString());
                 return;
             }
 
-            if (tryOpenDocumentsUi(cleanPath)) {
+            if (tryOpen(contentUri, "resource/folder")) {
                 callbackContext.success(contentUri.toString());
                 return;
             }
