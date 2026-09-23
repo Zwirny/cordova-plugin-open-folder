@@ -43,7 +43,7 @@ cordova.plugins.openFolder.open(
 ### API: `open(path, success, error)`
 
 | Parameter | Type       | Description                                                                     |
-| --------- | ---------- | ------------------------------------------------------------------------------- |
+| --------- | ---------- | --------------------------------------------------------------------------------- |
 | `path`    | `String`   | Absolute filesystem path **or** `file://` URL (e.g. from `cordova-plugin-file`) |
 | `success` | `Function` | Called once an app capable of displaying the folder has been launched           |
 | `error`   | `Function` | Called if the path is invalid or no suitable app can be found                   |

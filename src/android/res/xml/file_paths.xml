@@ -1,17 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- cordova.file.externalDataDirectory -> context.getExternalFilesDir(null) -->
-    <external-files-path name="external_app_files" path="." />
+    <!--
+      IMPORTANT: we deliberately do NOT map external-files-path / external-cache-path
+      as their own 1:1 roots here. If the requested folder is EXACTLY equal to such a
+      narrow root, Android's FileProvider throws a StringIndexOutOfBoundsException
+      (AOSP bug when path.length() == rootPath.length()). Using the broad
+      external-path root below means cordova.file.externalDataDirectory /
+      externalCacheDirectory are always handled as real sub-paths of that root,
+      never as an exact-match root themselves, which avoids the crash.
+    -->
+
+    <!-- Entire primary external/shared storage, e.g. /storage/emulated/0
+         Covers cordova.file.externalDataDirectory, externalCacheDirectory,
+         externalRootDirectory and any sub-path of them. -->
+    <external-path name="external_storage" path="." />
 
     <!-- cordova.file.dataDirectory -> context.getFilesDir() -->
     <files-path name="internal_files" path="." />
 
     <!-- cordova.file.cacheDirectory -->
     <cache-path name="internal_cache" path="." />
-
-    <!-- cordova.file.externalCacheDirectory -->
-    <external-cache-path name="external_cache" path="." />
-
-    <!-- Shared / SD-card storage, e.g. cordova.file.externalRootDirectory -->
-    <external-path name="external_storage" path="." />
 </paths>
