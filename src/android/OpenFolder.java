@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.StrictMode;
 import android.provider.DocumentsContract;
 
 import androidx.core.content.FileProvider;
@@ -100,6 +101,11 @@ public class OpenFolder extends CordovaPlugin {
                 return;
             }
 
+            if (tryOpenWithRawFileUri(folder)) {
+                callbackContext.success(contentUri.toString());
+                return;
+            }
+
             if (tryOpen(contentUri, "resource/folder")) {
                 callbackContext.success(contentUri.toString());
                 return;
@@ -124,6 +130,40 @@ public class OpenFolder extends CordovaPlugin {
             return decoded != null ? decoded : path;
         }
         return path;
+    }
+
+    /**
+     * Many simpler/legacy file manager apps (e.g. ones built on top of a raw java.io.File
+     * based browser, which is what most on-device "Files" apps with full storage access do)
+     * only know how to navigate a folder when given a plain file:// URI - a content:// URI
+     * from our own FileProvider isn't recognized by them and just causes the app to fall
+     * back to its default/home screen instead of actually navigating.
+     *
+     * Since Android 7 (API 24) throws a FileUriExposedException when a file:// URI is
+     * exposed via an Intent, we temporarily relax that StrictMode check just for this call.
+     */
+    private boolean tryOpenWithRawFileUri(File folder) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            // FileUriExposedException does not exist before API 24; file:// just works.
+            Uri fileUri = Uri.fromFile(folder);
+            return tryOpen(fileUri, "resource/folder") || tryOpen(fileUri, "*/*");
+        }
+
+        StrictMode.VmPolicy oldPolicy = StrictMode.getVmPolicy();
+        try {
+            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
+            Uri fileUri = Uri.fromFile(folder);
+            return tryOpen(fileUri, "resource/folder") || tryOpen(fileUri, "*/*");
+        } catch (Throwable t) {
+            android.util.Log.w(TAG, "tryOpenWithRawFileUri failed", t);
+            return false;
+        } finally {
+            try {
+                StrictMode.setVmPolicy(oldPolicy);
+            } catch (Throwable ignored) {
+                // never let restoring the policy crash the app
+            }
+        }
     }
 
     private boolean tryOpen(Uri uri, String mimeType) {
