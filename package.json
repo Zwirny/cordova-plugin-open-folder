@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-open-folder",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Cordova/Android plugin to open a given folder path directly in the device's native file manager app (no picker dialog).",
   "cordova": {
     "id": "cordova-plugin-open-folder",
