@@ -1,6 +1,5 @@
 package cordova.plugin.openfolder;
 
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -33,22 +32,39 @@ public class OpenFolder extends CordovaPlugin {
     private static final String ACTION_OPEN = "open";
     private static final String PROVIDER_SUFFIX = ".cordova.plugin.openfolder.provider";
 
+    private static final String TAG = "OpenFolderPlugin";
+
     @Override
-    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+    public boolean execute(final String action, final JSONArray args, final CallbackContext callbackContext) {
         if (!ACTION_OPEN.equals(action)) {
             return false;
         }
 
-        final String path = args.isNull(0) ? null : args.getString(0);
-
         cordova.getThreadPool().execute(new Runnable() {
             @Override
             public void run() {
-                openFolder(path, callbackContext);
+                // Catch literally everything (Exception AND Error) so a problem here
+                // can never bring down the whole app - it always reports back to JS instead.
+                try {
+                    String path = args.isNull(0) ? null : args.getString(0);
+                    openFolder(path, callbackContext);
+                } catch (Throwable t) {
+                    reportCrashSafely(t, callbackContext);
+                }
             }
         });
 
         return true;
+    }
+
+    private void reportCrashSafely(Throwable t, CallbackContext callbackContext) {
+        android.util.Log.e(TAG, "OpenFolder plugin failed", t);
+        String msg = t.getClass().getName() + ": " + t.getMessage();
+        try {
+            callbackContext.error(msg);
+        } catch (Throwable ignored) {
+            // never let error reporting itself crash the app
+        }
     }
 
     private void openFolder(String rawPath, CallbackContext callbackContext) {
@@ -73,23 +89,28 @@ public class OpenFolder extends CordovaPlugin {
         try {
             String authority = cordova.getActivity().getPackageName() + PROVIDER_SUFFIX;
             contentUri = FileProvider.getUriForFile(cordova.getActivity(), authority, folder);
-        } catch (IllegalArgumentException e) {
-            callbackContext.error("Folder is outside the paths configured for FileProvider: " + e.getMessage());
+        } catch (Throwable t) {
+            reportCrashSafely(t, callbackContext);
             return;
         }
 
-        if (tryOpen(contentUri, "resource/folder")) {
-            callbackContext.success(contentUri.toString());
-            return;
-        }
+        try {
+            if (tryOpen(contentUri, "resource/folder")) {
+                callbackContext.success(contentUri.toString());
+                return;
+            }
 
-        if (tryOpenDocumentsUi(cleanPath)) {
-            callbackContext.success(contentUri.toString());
-            return;
-        }
+            if (tryOpenDocumentsUi(cleanPath)) {
+                callbackContext.success(contentUri.toString());
+                return;
+            }
 
-        if (tryOpen(contentUri, "*/*")) {
-            callbackContext.success(contentUri.toString());
+            if (tryOpen(contentUri, "*/*")) {
+                callbackContext.success(contentUri.toString());
+                return;
+            }
+        } catch (Throwable t) {
+            reportCrashSafely(t, callbackContext);
             return;
         }
 
@@ -116,7 +137,8 @@ public class OpenFolder extends CordovaPlugin {
                 cordova.getActivity().startActivity(intent);
                 return true;
             }
-        } catch (ActivityNotFoundException | SecurityException e) {
+        } catch (Throwable t) {
+            android.util.Log.w(TAG, "tryOpen(" + mimeType + ") failed", t);
             // try next strategy
         }
         return false;
@@ -156,7 +178,13 @@ public class OpenFolder extends CordovaPlugin {
         }
 
         String docId = "primary:" + relative;
-        Uri docUri = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", docId);
+        Uri docUri;
+        try {
+            docUri = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", docId);
+        } catch (Throwable t) {
+            android.util.Log.w(TAG, "buildDocumentUri failed", t);
+            return false;
+        }
 
         return tryOpen(docUri, "vnd.android.document/directory");
     }
