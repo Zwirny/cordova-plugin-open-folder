@@ -56,15 +56,19 @@ The `success` callback receives the `content://` URI of the folder.
 
 Android does not provide a guaranteed API for forcing "any folder" to open in a file manager. Therefore, the plugin tries the following approaches in sequence:
 
-1. **`ACTION_VIEW` with the MIME type `resource/folder`** using a `FileProvider` URI.
-   This is supported by many file manager apps, including Google Files and many OEM/Zebra file managers.
-
-2. **Android's built-in "Files"/DocumentsUI** using a `DocumentsContract` URI.
+1. **Android's built-in "Files"/DocumentsUI** using a `DocumentsContract` URI.
    This works for paths located on the primary internal/external storage, such as `cordova.file.externalDataDirectory`.
 
-3. **Generic `ACTION_VIEW` with `*/*`** as a final fallback, allowing Android itself to suggest a suitable application.
+2. **`ACTION_VIEW` with a `file://` URI** using the MIME types `resource/folder` and `*/*`.
+   This is included as a compatibility fallback for some older or simpler file manager apps that do not properly handle `content://` URIs.
 
-If all approaches fail (for example, if no file manager app is installed on the device), the `error` callback is invoked.
+3. **`ACTION_VIEW` with the MIME type `resource/folder`** using a `FileProvider` `content://` URI.
+   This is supported by many file manager apps, including Google Files and various OEM/Zebra file managers.
+
+4. **Generic `ACTION_VIEW` with `*/*`** using the `FileProvider` `content://` URI as the final fallback, allowing Android to find an application capable of handling the content.
+
+If all approaches fail (for example, if no suitable file manager app is installed on the device), the `error` callback is invoked.
+
 
 ## Supported Android Versions
 
